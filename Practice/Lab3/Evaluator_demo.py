@@ -71,5 +71,13 @@
 #     print(f"Optimal Seed Set S2: {S2}")
 
 import random
+import numpy as np
 
-print(random.random())
+for _ in range(10):
+    print(np.random.rand() * 5)
+
+a = set([1, 2, 3, 4])
+b = set([2, 3, 4, 5])
+print(a - b)
+print((a-b).union(b-a))
+print(a.symmetric_difference(b))

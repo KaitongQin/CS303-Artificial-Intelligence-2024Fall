@@ -19,8 +19,7 @@ def read_graph(G, file_path):
     return G, P1, P2
 
 def read_seeds(file_path):
-    I1 = []
-    I2 = []
+    I1, I2 = [], []
     with open(file_path, 'r') as f:
         i1, i2 = map(int, f.readline().strip().split(" "))
         for i in range(i1):
@@ -32,39 +31,32 @@ def read_seeds(file_path):
     return I1, I2
 
 def simulation(G, U1, U2, P1, P2):
-    active_u1 = U1.copy()
-    active_u2 = U2.copy()
+    reach_u1 = U1.copy()
+    reach_u2 = U2.copy()
     q1 = deque(U1)
     q2 = deque(U2)
     
     while q1:
         current = q1.popleft()
         for neighbor in G.neighbors(current):
-            if neighbor not in active_u1:
+            if neighbor not in reach_u1:
                 if np.random.rand() < G[current][neighbor]['weight1']:
                     q1.append(neighbor)
-                active_u1.add(neighbor)
+                reach_u1.add(neighbor)
 
     while q2:
         current = q2.popleft()
         for neighbor in G.neighbors(current):
-            if neighbor not in active_u2:
+            if neighbor not in reach_u2:
                 if np.random.rand() < G[current][neighbor]['weight2']:
                     q2.append(neighbor)
-                active_u2.add(neighbor)
+                reach_u2.add(neighbor)
 
-    return active_u1, active_u2
+    return reach_u1, reach_u2
 
-def monte_carlo_simulation(G, U1, U2, P1, P2, Iteration):
-    total_E = 0
-    nodes = set(G.nodes())
-    n = G.number_of_nodes()
-    for _ in range(Iteration):
-        u1, u2 = simulation(G, U1, U2, P1, P2)
-        symmetric_difference_size = len(u1.symmetric_difference(u2))
-        total_E += n - symmetric_difference_size
+def greedy_best_first(G, I1, I2, k):
+    S1, S2 = set(), set()
 
-    return total_E / Iteration
 
 
 def main():
@@ -73,20 +65,20 @@ def main():
     parser.add_argument('-i', '--initial', type=str, help="path to initial seed set")
     parser.add_argument('-b', '--balanced', type=str, help="path to balanced seed set")
     parser.add_argument('-k', '--budget', type=int, help="budget")
-    parser.add_argument('-o', '--output', type=str, help="path to output value")
     args = parser.parse_args()
 
     G = nx.DiGraph()
     G, P1, P2 = read_graph(G, args.network)
     I1, I2 = read_seeds(args.initial)
-    S1, S2 = read_seeds(args.balanced)
-    U1 = I1.union(S1)
-    U2 = I2.union(S2)
-    iterations = 1000
-    ans = monte_carlo_simulation(G, U1, U2, P1, P2, iterations)
-    print(ans)
-    # with open(args.output, 'w') as f:
-    #     f.write(f"{ans:.2f}\n")
+    budget = args.budget
+    S1, S2 = greedy_best_first(G, I1, I2, budget)
+
+    with open(args.balanced, 'w') as f:
+        f.write(f"{len(S1)} {len(S2)}")
+        for element in S1:
+            f.write(f"{element}\n")
+        for element in S2:
+            f.write(f"{element}\n")
 
 if __name__ == "__main__":
     main()
