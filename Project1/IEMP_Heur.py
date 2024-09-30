@@ -4,7 +4,6 @@ import argparse
 from collections import deque
 
 def read_graph(G, file_path):
-    P1, P2 = [], []
     with open(file_path, 'r') as f:
         n, m = map(int, f.readline().strip().split(" "))
         for i in range(m):
@@ -13,10 +12,8 @@ def read_graph(G, file_path):
             v = int(s[1])
             p1 = float(s[2])
             p2 = float(s[3])
-            P1.append(p1)
-            P2.append(p2)
             G.add_edge(u, v, weight1=p1, weight2=p2)
-    return G, P1, P2
+    return G
 
 def read_seeds(file_path):
     I1, I2 = [], []
@@ -30,7 +27,7 @@ def read_seeds(file_path):
     I2 = set(I2)
     return I1, I2
 
-def simulation(G, U1, U2, P1, P2):
+def simulation(G, U1, U2):
     reach_u1 = U1.copy()
     reach_u2 = U2.copy()
     q1 = deque(U1)
@@ -54,8 +51,14 @@ def simulation(G, U1, U2, P1, P2):
 
     return reach_u1, reach_u2
 
+def compute_fi(G, U1, U2):
+    fi = set(G.nodes()) - (U1 - U2).union(U2 - U1)
+    return len(fi)
+
 def greedy_best_first(G, I1, I2, k):
     S1, S2 = set(), set()
+    while len(S1) + len(S2) < k:
+        simulation()
 
 
 
@@ -68,7 +71,7 @@ def main():
     args = parser.parse_args()
 
     G = nx.DiGraph()
-    G, P1, P2 = read_graph(G, args.network)
+    G = read_graph(G, args.network)
     I1, I2 = read_seeds(args.initial)
     budget = args.budget
     S1, S2 = greedy_best_first(G, I1, I2, budget)

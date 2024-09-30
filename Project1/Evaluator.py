@@ -1,5 +1,6 @@
 import networkx as nx
 import numpy as np
+import random 
 import argparse
 from collections import deque
 
@@ -36,20 +37,24 @@ def simulation(G, U1, U2, P1, P2):
     reach_u2 = U2.copy()
     q1 = deque(U1)
     q2 = deque(U2)
+    in_q1 = set()
+    in_q2 = set()
     
     while q1:
         current = q1.popleft()
-        for neighbor in G.neighbors(current):
-            if neighbor not in reach_u1:
-                if np.random.rand() < G[current][neighbor]['weight1']:
+        if current not in in_q1:
+            in_q1.add(current)
+            for neighbor in G.neighbors(current):
+                if random.random() < G[current][neighbor]['weight1']:
                     q1.append(neighbor)
                 reach_u1.add(neighbor)
 
     while q2:
         current = q2.popleft()
-        for neighbor in G.neighbors(current):
-            if neighbor not in reach_u2:
-                if np.random.rand() < G[current][neighbor]['weight2']:
+        if current not in in_q2:
+            in_q2.add(current)
+            for neighbor in G.neighbors(current):
+                if random.random() < G[current][neighbor]['weight2']:
                     q2.append(neighbor)
                 reach_u2.add(neighbor)
 
