@@ -1,5 +1,6 @@
 import networkx as nx
 import numpy as np
+import random
 import argparse
 from collections import deque
 
@@ -32,34 +33,79 @@ def simulation(G, U1, U2):
     reach_u2 = U2.copy()
     q1 = deque(U1)
     q2 = deque(U2)
+    in_q1 = set()
+    in_q2 = set()
     
     while q1:
         current = q1.popleft()
-        for neighbor in G.neighbors(current):
-            if neighbor not in reach_u1:
-                if np.random.rand() < G[current][neighbor]['weight1']:
+        if current not in in_q1:
+            in_q1.add(current)
+            for neighbor in G.neighbors(current):
+                if random.random() < G[current][neighbor]['weight1']:
                     q1.append(neighbor)
                 reach_u1.add(neighbor)
 
     while q2:
         current = q2.popleft()
-        for neighbor in G.neighbors(current):
-            if neighbor not in reach_u2:
-                if np.random.rand() < G[current][neighbor]['weight2']:
+        if current not in in_q2:
+            in_q2.add(current)
+            for neighbor in G.neighbors(current):
+                if random.random() < G[current][neighbor]['weight2']:
                     q2.append(neighbor)
                 reach_u2.add(neighbor)
 
     return reach_u1, reach_u2
 
-def compute_fi(G, U1, U2):
-    fi = set(G.nodes()) - (U1 - U2).union(U2 - U1)
-    return len(fi)
+def compute_delta_fi(G, U1, U2, v):
+    reach_u1, reach_u2 = simulation(G, U1, U2)
+    initial = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
+    U1.add(v)
+    reach_u1, reach_u2 = simulation(G, U1, U2)
+    after = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
+    U1.remove(v)
+    return len(after) - len(initial)
+
+# based on the out degree
+# def select_v(G, U1, U2):
+#     remain = G.nodes - (U1.union(U2))
+#     remain_list = list(remain)
+#     remain_list.sort(key=lambda x: G.out_degree(x), reverse=True)
+#     return remain_list[0]
+
+# based on the total weight
+def select_v(G, U1, U2):
+    remain = G.nodes - (U1.union(U2))
+    remain_list = list(remain)
+    remain_list.sort(key=lambda x: sum(G[x][nbr].get('weight1', 0) for nbr in G.neighbors(x)), reverse=True)
+    return remain_list[0]
+
 
 def greedy_best_first(G, I1, I2, k):
     S1, S2 = set(), set()
     while len(S1) + len(S2) < k:
-        simulation()
-
+        U1 = I1.union(S1)
+        U2 = I2.union(S2)
+        max_v1 = -1
+        max_delta_1 = 0
+        for _ in range(10):
+            v = select_v(G, U1, U2)
+            compute_delta_1 = compute_delta_fi(G, U1, U2, v)
+            if compute_delta_1 > max_delta_1:
+                max_v1 = v
+                max_delta_1 = compute_delta_1
+        max_v2 = -1
+        max_delta_2 = 0
+        for _ in range(10):
+            v = select_v(G, U1, U2)
+            compute_delta_2 = compute_delta_fi(G, U2, U1, v)
+            if compute_delta_2 > max_delta_2:
+                max_v2 = v
+                max_delta_2 = compute_delta_2
+        if max_delta_1 > max_delta_2:
+            S1.add(max_v1)
+        else:
+            S2.add(max_v2)
+    return S1, S2
 
 
 def main():
@@ -77,7 +123,7 @@ def main():
     S1, S2 = greedy_best_first(G, I1, I2, budget)
 
     with open(args.balanced, 'w') as f:
-        f.write(f"{len(S1)} {len(S2)}")
+        f.write(f"{len(S1)} {len(S2)}\n")
         for element in S1:
             f.write(f"{element}\n")
         for element in S2:
