@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 import random
+import heapq
 import argparse
 from collections import deque
 
@@ -41,7 +42,7 @@ def simulation(G, U1, U2):
         if current not in in_q1:
             in_q1.add(current)
             for neighbor in G.neighbors(current):
-                if random.random() < G[current][neighbor]['weight1']:
+                if random.random() < G[current][neighbor]['weight1'] * 1.05:
                     q1.append(neighbor)
                 reach_u1.add(neighbor)
 
@@ -50,61 +51,76 @@ def simulation(G, U1, U2):
         if current not in in_q2:
             in_q2.add(current)
             for neighbor in G.neighbors(current):
-                if random.random() < G[current][neighbor]['weight2']:
+                if random.random() < G[current][neighbor]['weight2'] * 1.05:
                     q2.append(neighbor)
                 reach_u2.add(neighbor)
 
     return reach_u1, reach_u2
 
-def compute_delta_fi(G, U1, U2, v):
-    reach_u1, reach_u2 = simulation(G, U1, U2)
-    initial = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
+def compute_delta_fi(G, U1, U2, v, initial_fi):
     U1.add(v)
     reach_u1, reach_u2 = simulation(G, U1, U2)
     after = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
     U1.remove(v)
-    return len(after) - len(initial)
+    return len(after) - initial_fi
 
 # based on the out degree
+def select_v(G, U1, U2, exam_num):
+    remain = G.nodes - (U1.union(U2))
+    remain_list = list(remain)
+    remain_top_degree = heapq.nlargest(exam_num, remain_list, key=lambda x: G.out_degree(x))
+    remain_top_weight1 = heapq.nlargest(exam_num, remain_list, key=lambda x: sum(G[x][nbr].get('weight1', 0) for nbr in G.neighbors(x)))
+    remain_top_weight2 = heapq.nlargest(exam_num, remain_list, key=lambda x: sum(G[x][nbr].get('weight2', 0) for nbr in G.neighbors(x)))
+    remain_top = list(set(remain_top_degree).union(set(remain_top_weight1)).union(set(remain_top_weight2)))
+    return remain_top
+
 # def select_v(G, U1, U2):
 #     remain = G.nodes - (U1.union(U2))
 #     remain_list = list(remain)
-#     remain_list.sort(key=lambda x: G.out_degree(x), reverse=True)
-#     return remain_list[0]
+#     alpha = beta = 0.5
+#     remain_list.sort(
+#         key=lambda x: min(alpha * sum(G[x][nbr].get('weight1', 0) for nbr in G.neighbors(x)),
+#                           beta * sum(G[x][nbr].get('weight2', 0) for nbr in G.neighbors(x))),
+#         reverse=True
+#     )
+#     return remain_list
 
-# based on the total weight
-def select_v(G, U1, U2):
-    remain = G.nodes - (U1.union(U2))
-    remain_list = list(remain)
-    remain_list.sort(key=lambda x: sum(G[x][nbr].get('weight1', 0) for nbr in G.neighbors(x)), reverse=True)
-    return remain_list[0]
-
+# def select_v(G, U1, U2, exam_num):
+#     remain = G.nodes - (U1.union(U2))
+#     remain_list = list(remain)
+#     remain_top = heapq.nlargest(exam_num, remain_list, key=lambda x: sum(max(G[x][nbr].get('weight2', 0), G[x][nbr].get('weight1', 0)) for nbr in G.neighbors(x)))
+#     return remain_top
 
 def greedy_best_first(G, I1, I2, k):
     S1, S2 = set(), set()
+    exam_num = 40
     while len(S1) + len(S2) < k:
         U1 = I1.union(S1)
         U2 = I2.union(S2)
         max_v1 = -1
         max_delta_1 = 0
-        for _ in range(10):
-            v = select_v(G, U1, U2)
-            compute_delta_1 = compute_delta_fi(G, U1, U2, v)
+        r1, r2 = simulation(G, U1.copy(), U2.copy())
+        initial_length = len(G.nodes() - (r1 - r2).union(r2 - r1))
+        
+        remain_list = select_v(G, U1, U2, exam_num)
+        for v in remain_list:
+            compute_delta_1 = compute_delta_fi(G, U1, U2, v, initial_length)
             if compute_delta_1 > max_delta_1:
                 max_v1 = v
                 max_delta_1 = compute_delta_1
         max_v2 = -1
         max_delta_2 = 0
-        for _ in range(10):
-            v = select_v(G, U1, U2)
-            compute_delta_2 = compute_delta_fi(G, U2, U1, v)
+        for v in remain_list:
+            compute_delta_2 = compute_delta_fi(G, U2, U1, v, initial_length)
             if compute_delta_2 > max_delta_2:
                 max_v2 = v
                 max_delta_2 = compute_delta_2
         if max_delta_1 > max_delta_2:
-            S1.add(max_v1)
+            if max_v1 != -1:
+                S1.add(max_v1)
         else:
-            S2.add(max_v2)
+            if max_v2 != -1:
+                S2.add(max_v2)
     return S1, S2
 
 
