@@ -57,24 +57,17 @@ def simulation(G, U1, U2):
 
     return reach_u1, reach_u2
 
-def compute_delta_fi(G, U1, U2, v, initial_fi, select):
-    if select == 1:
-        U1.add(v)
-        reach_u1, reach_u2 = simulation(G, U1, U2)
-        after = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
-        U1.remove(v)
-        return len(after) - initial_fi
-    else:
-        U2.add(v)
-        reach_u1, reach_u2 = simulation(G, U1, U2)
-        after = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
-        U2.remove(v)
-        return len(after) - initial_fi
+def compute_delta_fi(G, U1, U2, v, initial_fi):
+    U1.add(v)
+    reach_u1, reach_u2 = simulation(G, U1, U2)
+    after = G.nodes() - (reach_u1 - reach_u2).union(reach_u2 - reach_u1)
+    U1.remove(v)
+    return len(after) - initial_fi
 
 def select_v(G, U1, U2):
     remain = G.nodes - (U1.union(U2))
     remain_list = list(remain)
-    remain_list.sort(key=lambda x: G.out_degree(x), reverse=True)
+    remain_list.sort(key=lambda x: len(nx.bfs_tree(G, x).nodes()), reverse=True)
     return remain_list
 
 # def select_v(G, U1, U2):
@@ -94,7 +87,7 @@ def greedy_best_first(G, I1, I2, k):
         max_v1 = -1
         max_delta_1 = 0
         for v in remain_list[:50]:
-            compute_delta_1 = compute_delta_fi(G, U1, U2, v, initial_length, select=1)
+            compute_delta_1 = compute_delta_fi(G, U1, U2, v, initial_length)
             if compute_delta_1 > max_delta_1:
                 max_v1 = v
                 max_delta_1 = compute_delta_1
@@ -102,7 +95,7 @@ def greedy_best_first(G, I1, I2, k):
         max_v2 = -1
         max_delta_2 = 0
         for v in remain_list[:50]:
-            compute_delta_2 = compute_delta_fi(G, U1, U2, v, initial_length, select=2)
+            compute_delta_2 = compute_delta_fi(G, U2, U1, v, initial_length)
             if compute_delta_2 > max_delta_2:
                 max_v2 = v
                 max_delta_2 = compute_delta_2
@@ -140,4 +133,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
