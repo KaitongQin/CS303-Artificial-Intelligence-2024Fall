@@ -1,0 +1,92 @@
+ 𝑆1←𝑆2←∅;
+ while 𝑆1+𝑆2 ≤𝑘do
+ for j = 1 to N:
+ dothe following Monte Carlosampling,eachsamplingtocalculatetheh(v)valuefor
+ allvertices:
+ 1. simulate an IC model using seed set 𝐼1⋃𝑆1, record the activate set 𝑎1and exposure set 𝑟1
+ 2. simulate an IC model using seed set 𝐼2⋃𝑆2, record the activate set 𝑎2and exposure set𝑟2
+ 3. for each 𝑣𝑖 in G:
+ 3.1 simulate an IC model base on the 𝑎1 and 𝑟1, record the 𝑎1_𝑣𝑖_𝑖𝑛𝑐𝑟𝑒𝑚𝑒𝑛𝑡and 𝑟1_𝑣𝑖_𝑖𝑛𝑐𝑟𝑒𝑚𝑒𝑛𝑡
+ 3.2 simulate an IC model base on the 𝑎2 and 𝑟2, record the 𝑎2_𝑣𝑖_𝑖𝑛𝑐𝑟𝑒𝑚𝑒𝑛𝑡and 𝑟2_𝑣𝑖_𝑖𝑛𝑐𝑟𝑒𝑚𝑒𝑛𝑡
+ 3.3 calculate and record the ℎ1𝑗(𝑣𝑖) = Φ𝑆1∪𝑣𝑖 ,𝑆2 −Φ𝑆1,𝑆2
+ 3.4 calculate and record the ℎ2𝑗(𝑣𝑖) = Φ𝑆1,𝑆2∪𝑣𝑖 −Φ𝑆1,𝑆2
+ calculatethe averageℎ1𝑎𝑣𝑔(𝑣)value and ℎ2𝑎𝑣𝑔(𝑣) forallvertices
+ 𝑣1 ∗←argmax 𝑣
+ ℎ1𝑎𝑣𝑔(𝑣) ;
+ 𝑣2 ∗←argmax 𝑣
+ ℎ2𝑎𝑣𝑔(𝑣) ;
+ add the better option between<𝑣1 ∗,∅>and<∅,𝑣2 ∗>to <𝑆1,𝑆2>while respecting the budget
+请根据上述伪代码对我的代码进行修改
+def simulation(G, U1, U2):
+    r1 = U1.copy()
+    r2 = U2.copy()
+    q1 = deque(U1)
+    q2 = deque(U2)
+    a1, a2 = set(), set() 
+
+    while q1:
+        current = q1.popleft()
+        a1.add(current)
+        for neighbor in G.neighbors(current):
+            if np.random.rand() < G[current][neighbor]['weight1'] and (neighbor not in a1):
+                q1.append(neighbor)
+            r1.add(neighbor)
+
+    while q2:
+        current = q2.popleft()
+        a2.add(current)
+        for neighbor in G.neighbors(current):
+            if np.random.rand() < G[current][neighbor]['weight2'] and (neighbor not in a2):
+                q2.append(neighbor)
+            r2.add(neighbor)
+
+    return r1, r2
+
+
+def bfs(G, v, weight):
+    q = deque()
+    r = set()
+    a = set()
+    q.append(v)
+    r.add(v)
+    a.add(v)
+    while q:
+        current = q.popleft()
+        a.add(current)
+        for neighbor in G.neighbors(current):
+            if np.random.rand() < G[current][neighbor][weight] and (neighbor not in a):
+                q.append(neighbor)
+            r.add(neighbor)
+    return r
+
+
+def greedy_best_first(G, I1, I2, budget):
+    S1, S2 = set(), set()
+    n = G.number_of_nodes()
+    while len(S1) + len(S2) < budget:
+        h1 = np.zeros(n)
+        h2 = np.zeros(n)
+        U1, U2 = I1.union(S1), I2.union(S2)
+        for _ in range(3):
+            r1, r2 = simulation(G, U1, U2)
+            start = len(G.nodes() - (r1 - r2).union(r2 - r1))
+            for v in range(1000):
+                r1_v = bfs(G, v, 'weight1')
+                r1_v = r1_v.union(r1)
+                end = len(G.nodes() - (r1_v - r2).union(r2 - r1_v))
+                h1[v] += (end - start)
+
+                r2_v = bfs(G, v, 'weight2')
+                r2_v = r2_v.union(r2)
+                end = len(G.nodes() - (r2_v - r1).union(r1 - r2_v))
+                h2[v] += (end - start)
+        
+        v1 = np.argmax(h1)
+        v2 = np.argmax(h2)
+        if h1[v1] > h2[v2]:
+            S1.add(v1)
+            print(h1[v1])
+        else:
+            S2.add(v2)
+            print(h2[v2])
+    return S1, S2
